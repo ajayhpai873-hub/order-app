@@ -95,7 +95,7 @@ $('go').onclick=async function(){
   var fd=new FormData();fd.append('image',img,'o.jpg');fd.append('products',products.join('\n'));
   var resp=await fetch('/api/read',{method:'POST',headers:{'X-Password':pw},body:fd});
   if(resp.status===401){ls('pw','');throw new Error('Wrong password')}
-  if(!resp.ok)throw new Error('Server error '+resp.status+(resp.status===429?' (daily free limit, try later)':''));
+  if(!resp.ok){var et='';try{et=(await resp.json()).detail}catch(e){}throw new Error('Server error '+resp.status+' '+et)}if(0)throw new Error(''+(resp.status===429?' (daily free limit, try later)':''));
   var out=await resp.json();
   items=(out.items||[]).map(function(x){return{item:x.item||x.raw||'',qty:x.qty==null?'':x.qty,raw:x.raw||'',note:x.note||'',low:x.confident===false}});
   items.forEach(function(x){var b=best(x.item);if(products.length&&(!b.length||b[0].s<.6))x.low=true});

@@ -27,7 +27,8 @@ def read(image: UploadFile = File(...), products: str = Form(""), x_password: st
         timeout=90)
     if r.status_code == 429:
         raise HTTPException(429, "free limit reached, try later")
-    r.raise_for_status()
+    if r.status_code != 200:
+        raise HTTPException(502, "Gemini error " + str(r.status_code) + ": " + r.text[:300])
     text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
