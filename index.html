@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order Reader</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f7a4d">
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--tx:#1d2420;--mu:#68716b;--ac:#1f7a4d;--ac2:#e3f2ea;--bd:#d9ddd6;--wa:#b45309;--wb:#fdf0dc;--rd:#b42318;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121512;--card:#1b201c;--tx:#eaf0ea;--mu:#9aa59d;--ac:#4cc58a;--ac2:#1d3326;--bd:#2d352f;--wa:#f0b35a;--wb:#3a2d16;--rd:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121512;--card:#1b201c;--tx:#eaf0ea;--mu:#9aa59d;--ac:#4cc58a;--ac2:#1d3326;--bd:#2d352f;--wa:#f0b35a;--wb:#3a2d16;--rd:#ff8a80;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 2px}p.s{color:var(--mu);margin:0 0 14px;font-size:14px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+button,.btn{font:inherit;border:0;border-radius:10px;padding:12px 14px;background:var(--ac);color:#fff;font-weight:600;cursor:pointer;display:inline-block;text-align:center}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) button,:root:not([data-theme="light"]) .btn{color:#06210f}}
+button.g,.btn.g{background:var(--ac2);color:var(--ac)}button:disabled{opacity:.5}
+.row2{display:flex;gap:8px}.row2>*{flex:1}
+textarea,input[type=text],input[type=number]{width:100%;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px}
+textarea{min-height:110px}
+summary{font-weight:600;cursor:pointer}
+img#pv{width:100%;max-height:340px;object-fit:contain;border-radius:10px;margin-bottom:10px;background:var(--bg)}
+.it{border:1px solid var(--bd);border-radius:12px;padding:10px;margin-bottom:8px}
+.it.low{border-color:var(--wa);background:var(--wb)}
+.it .t{display:flex;gap:6px;align-items:center}.it .t input[type=text]{flex:1}.it .t input[type=number]{width:70px}
+.it .m{font-size:13px;color:var(--mu);margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{background:var(--ac2);color:var(--ac);border-radius:99px;padding:4px 10px;font-size:13px;font-weight:600;cursor:pointer;border:0}
+.x{background:transparent;color:var(--rd);padding:6px 8px;font-size:18px}
+.b{font-size:12px;font-weight:700;color:var(--wa)}
+#st{color:var(--mu);font-size:14px;margin:8px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>📋 Order Reader</h1>
+<p class="s">Take a photo of the handwritten order. The app reads it, and you check it before using it.</p>
+
+<details class="c" id="pl">
+<summary>Shop product list (improves accuracy)</summary>
+<p class="s" style="margin-top:8px">One product per line. Paste from Excel (first column). Saved on this phone.</p>
+<textarea id="prods" placeholder="Styplon&#10;Pantop 40&#10;Himalaya Liv 52&#10;..."></textarea>
+<div class="row2" style="margin-top:8px"><button class="g" id="sv">Save list</button><label class="btn g">Load CSV/TXT<input type="file" id="csv" accept=".csv,.txt" hidden></label></div>
+</details>
+
+<div class="c">
+<img id="pv" alt="" hidden>
+<div class="row2">
+<label class="btn g">📷 Take photo<input type="file" id="cam" accept="image/*" capture="environment" hidden></label>
+<label class="btn g">🖼 Choose image<input type="file" id="gal" accept="image/*" hidden></label>
+</div>
+<div style="margin-top:10px"><button id="go" style="width:100%" disabled>Read order</button></div>
+<div id="st"></div>
+</div>
+
+<div id="res" class="c" hidden>
+<div style="font-weight:700;margin-bottom:8px">Check each line, then copy</div>
+<div id="list"></div>
+<div class="row2"><button class="g" id="add">+ Add line</button><button id="cp">Copy list</button></div>
+<div style="margin-top:8px"><button class="g" id="dl" style="width:100%">Save as .txt</button></div>
+<p class="s" style="margin-top:10px">Lines marked ⚠ were hard to read. Always double-check medicine names and quantities.</p>
+</div>
+</main>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var blob=null,items=[],products=[];
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function loadProds(){var t=ls('prods')||'';$('prods').value=t;products=parse(t)}
+function parse(t){return t.split(/\r?\n/).map(function(l){return l.split(',')[0].replace(/["']/g,'').trim()}).filter(Boolean)}
+$('sv').onclick=function(){ls('prods',$('prods').value);products=parse($('prods').value);$('st').textContent='Saved '+products.length+' products.'};
+$('csv').onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){$('prods').value=r.result;$('sv').click()};r.readAsText(f)};
+loadProds();if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+
+function lev(a,b){var m=a.length,n=b.length,d=[],i,j;for(i=0;i<=m;i++){d[i]=[i]}for(j=0;j<=n;j++)d[0][j]=j;
+for(i=1;i<=m;i++)for(j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n]}
+function sc(a,b){a=a.toLowerCase();b=b.toLowerCase();if(!a||!b)return 0;if(b.indexOf(a)>-1||a.indexOf(b)>-1)return .9;return 1-lev(a,b)/Math.max(a.length,b.length)}
+function best(n){return products.map(function(p){return{p:p,s:sc(n,p)}}).sort(function(a,b){return b.s-a.s}).slice(0,3).filter(function(x){return x.s>=.4})}
+
+function pick(e){var f=e.target.files[0];if(!f)return;blob=f;var u=URL.createObjectURL(f);$('pv').src=u;$('pv').hidden=false;$('go').disabled=false;$('st').textContent=''}
+$('cam').onchange=pick;$('gal').onchange=pick;
+
+function shrink(f){return new Promise(function(ok,no){var im=new Image();im.onload=function(){var M=1800,s=Math.min(1,M/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);c.toBlob(function(b){b?ok(b):no(new Error('resize'))},'image/jpeg',.88)};im.onerror=no;im.src=URL.createObjectURL(f)})}
+
+$('go').onclick=async function(){
+ $('go').disabled=true;$('st').textContent='Reading handwriting…';
+ try{
+  var pw=ls('pw');if(!pw){pw=prompt('Enter app password');if(!pw)throw new Error('Password needed');ls('pw',pw)}
+  var img=await shrink(blob);
+  var fd=new FormData();fd.append('image',img,'o.jpg');fd.append('products',products.join('\n'));
+  var resp=await fetch('/api/read',{method:'POST',headers:{'X-Password':pw},body:fd});
+  if(resp.status===401){ls('pw','');throw new Error('Wrong password')}
+  if(!resp.ok)throw new Error('Server error '+resp.status+(resp.status===429?' (daily free limit, try later)':''));
+  var out=await resp.json();
+  items=(out.items||[]).map(function(x){return{item:x.item||x.raw||'',qty:x.qty==null?'':x.qty,raw:x.raw||'',note:x.note||'',low:x.confident===false}});
+  items.forEach(function(x){var b=best(x.item);if(products.length&&(!b.length||b[0].s<.6))x.low=true});
+  $('st').textContent=out.customer?'Customer: '+out.customer:'';
+  render();
+ }catch(e){$('st').textContent='Could not read: '+(e&&e.message||e)}
+ $('go').disabled=false;
+};
+
+function render(){
+ var L=$('list');L.textContent='';$('res').hidden=false;
+ items.forEach(function(x,i){
+  var d=document.createElement('div');d.className='it'+(x.low?' low':'');
+  var t=document.createElement('div');t.className='t';
+  var a=document.createElement('input');a.type='text';a.value=x.item;a.oninput=function(){x.item=a.value};
+  var q=document.createElement('input');q.type='number';q.value=x.qty;q.placeholder='Qty';q.oninput=function(){x.qty=q.value};
+  var r=document.createElement('button');r.className='x';r.textContent='✕';r.onclick=function(){items.splice(i,1);render()};
+  t.appendChild(a);t.appendChild(q);t.appendChild(r);d.appendChild(t);
+  var m=[];if(x.low)m.push('⚠ check this line');if(x.raw&&x.raw!==x.item)m.push('Read as: '+x.raw);if(x.note)m.push(x.note);
+  if(m.length){var mm=document.createElement('div');mm.className='m';mm.textContent=m.join(' · ');d.appendChild(mm)}
+  var bs=best(x.item).filter(function(b){return b.p!==x.item});
+  if(bs.length){var cs=document.createElement('div');cs.className='chips';bs.forEach(function(b){var c=document.createElement('button');c.className='chip';c.textContent=b.p;c.onclick=function(){x.item=b.p;x.low=false;render()};cs.appendChild(c)});d.appendChild(cs)}
+  L.appendChild(d)});
+}
+$('add').onclick=function(){items.push({item:'',qty:'',raw:'',note:'',low:false});render()};
+function txt(){return items.filter(function(x){return x.item.trim()}).map(function(x,i){return(i+1)+'. '+x.item.trim()+(x.qty!==''?' - '+x.qty:'')}).join('\n')}
+$('cp').onclick=async function(){try{await navigator.clipboard.writeText(txt());$('cp').textContent='Copied ✓'}catch(e){$('st').textContent='Copy blocked; use Save as .txt'}setTimeout(function(){$('cp').textContent='Copy list'},1500)};
+$('dl').onclick=function(){var u=URL.createObjectURL(new Blob([txt()],{type:'text/plain'})),l=document.createElement('a');l.href=u;l.download='order.txt';l.click()};
+})();
+</script>
+</body>
+</html>
